@@ -17,11 +17,6 @@ node practice-01/js/progress.js
 node practice-01/js/plan.js
 node practice-01/js/debug.js
 node practice-01/js/progress-input.js
-node practice-01/js/hello.js
-node practice-01/js/types.js
-node practice-01/js/progress.js
-node practice-01/js/plan.js
-node practice-01/js/debug.js
 
 ## Задание 1:
 Код идентичен, но последняя строка отличается - в терминале это undefined, а в консоли браузера object.
