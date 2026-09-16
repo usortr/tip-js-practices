@@ -1,7 +1,7 @@
 "use strict";
 
-const totalTasks = 0;
-const completedTasks = 0;
+const totalTasks = 9;
+const completedTasks = 9;
 
 // 1. Проверка типа данных (отлов строк, boolean и т.д.)
 if (typeof totalTasks !== 'number' || typeof completedTasks !== 'number') {

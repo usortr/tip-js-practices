@@ -1,7 +1,7 @@
 "use strict";
 
-const totalTasks = 12;
-const completedTasks = 5;
+const totalTasks = 9;
+const completedTasks = 9;
 const dailyLimit = 3;
 
 // 1. Проверка типов (отлавливаем строки вместо чисел)
