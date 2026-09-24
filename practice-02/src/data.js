@@ -9,5 +9,15 @@ export const demoTasks = [
 
 // TODO: указать свой вариант и подготовить шесть задач по разделу 7 методички.
 // Пустой массив — заготовка, а не выполненный индивидуальный вариант.
-export const variantNumber = null;
-export const variantTasks = [];
+export const variantNumber = 3;
+// Вариант 3:
+// K = 2 (первые две задачи выполнены)
+// Приоритет новой задачи (id=80) = "low"
+export const variantTasks = [
+  { id: 11, title: "Спроектировать структуру страниц портфолио", completed: true, priority: "high" },
+  { id: 23, title: "Сверстать главный экран (Hero section)", completed: true, priority: "medium" },
+  { id: 37, title: "Добавить раздел с проектами", completed: false, priority: "medium" },
+  { id: 41, title: "Реализовать форму обратной связи", completed: false, priority: "high" },
+  { id: 58, title: "Адаптировать вёрстку под мобильные устройства", completed: false, priority: "low" },
+  { id: 64, title: "Оптимизировать изображения и настроить SEO", completed: false, priority: "low" },
+];
