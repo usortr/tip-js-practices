@@ -5,9 +5,16 @@ import { createTaskApi } from "./task-api.js";
 import { getVariantFilters, variantNumber } from "./variant.js";
 
 function readApiUrl(params) {
-  const value = params.get("api") ?? "http://127.0.0.1:5505/api";
+  const host = window.location.hostname || "127.0.0.1";
+  const defaultValue = `http://${host}:5505/api`;
+  const value = params.get("api") ?? defaultValue;
+
   const url = new URL(value);
-  if (!["http:", "https:"].includes(url.protocol)) throw new TypeError("Неверный протокол API.");
+
+  if (!["http:", "https:"].includes(url.protocol)) {
+    throw new TypeError("Неверный протокол API.");
+  }
+
   return url.href.replace(/\/$/, "");
 }
 

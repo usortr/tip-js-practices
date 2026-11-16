@@ -1,12 +1,5 @@
 export class ApiError extends Error {
-  constructor(message, {
-    kind,
-    status = null,
-    code = null,
-    details = null,
-    url = null,
-    cause,
-  } = {}) {
+  constructor(message, { kind, status = null, code = null, details = null, url = null, cause } = {}) {
     super(message, cause === undefined ? undefined : { cause });
     this.name = "ApiError";
     this.kind = kind;
@@ -17,31 +10,103 @@ export class ApiError extends Error {
   }
 }
 
-// Соединяет абсолютный baseUrl, путь и непустые query-параметры.
 export function buildUrl(baseUrl, path, query = {}) {
-  void baseUrl;
-  void path;
-  void query;
-  throw new Error("Не реализовано: buildUrl");
+  const base = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+  const url = new URL(cleanPath, base);
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.append(key, String(value));
+    }
+  }
+  return url.toString();
 }
 
-// requestJson(path, { method, query, body, signal, timeoutMs } = {})
-// поддерживает GET, POST, PATCH и DELETE; ответ 204 преобразуется в null.
-export function createApiClient({
-  baseUrl,
-  fetchFn = globalThis.fetch,
-  timeoutMs = 3000,
-} = {}) {
-  void baseUrl;
-  void fetchFn;
-  void timeoutMs;
+const ALLOWED_METHODS = new Set(["GET", "POST", "PATCH", "DELETE"]);
 
-  // Перенесите решение ПР5 и расширьте его:
-  // 1. Разрешите только GET, POST, PATCH и DELETE.
-  // 2. Для body выполните JSON.stringify и добавьте Content-Type: application/json.
-  // 3. Не допускайте body у GET и не добавляйте Content-Type без тела.
-  // 4. Сохраните Accept, тайм-аут, внешний AbortSignal и виды ApiError из ПР5.
-  // 5. Проверяйте HTTP-ошибку до Content-Type успешного ответа.
-  // 6. Для статуса 204 возвращайте null, не пытаясь прочитать JSON.
-  throw new Error("Не реализовано: createApiClient");
+export function createApiClient({ baseUrl, fetchFn = globalThis.fetch, timeoutMs = 3000 } = {}) {
+  if (typeof baseUrl !== "string") throw new TypeError("Некорректный baseUrl");
+  let parsedUrl;
+  try { parsedUrl = new URL(baseUrl); } catch { throw new TypeError("Некорректный baseUrl"); }
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") throw new TypeError("Некорректный baseUrl");
+  if (parsedUrl.search) throw new TypeError("Некорректный baseUrl");
+  if (typeof fetchFn !== "function") throw new TypeError("Некорректный fetchFn");
+  if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) throw new TypeError("Некорректный timeoutMs");
+
+  const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+
+  return {
+    async requestJson(path, { method = "GET", query = {}, body, signal: externalSignal, timeoutMs: customTimeout } = {}) {
+      const upperMethod = String(method).toUpperCase();
+      if (!ALLOWED_METHODS.has(upperMethod)) throw new TypeError(`Недопустимый метод: ${method}`);
+      if (upperMethod === "GET" && body !== undefined) throw new TypeError("GET не может иметь тело");
+
+      const url = buildUrl(normalizedBaseUrl, path, query);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), customTimeout ?? timeoutMs);
+
+      if (externalSignal) {
+        externalSignal.addEventListener("abort", () => controller.abort());
+      }
+
+      const headers = { "Accept": "application/json" };
+      let fetchBody;
+      if (body !== undefined) {
+        fetchBody = JSON.stringify(body);
+        headers["Content-Type"] = "application/json";
+      }
+
+      try {
+        const response = await fetchFn(url, {
+          method: upperMethod,
+          headers,
+          body: fetchBody,
+          signal: controller.signal,
+        });
+
+        if (!response || typeof response.ok !== "boolean" || !response.headers) {
+          throw new ApiError("Неверный формат ответа от fetch", { kind: "invalid-response", url });
+        }
+
+        if (response.status === 204) {
+          return null;
+        }
+
+        if (!response.ok) {
+          let details = null;
+          let code = null;
+          let message = `HTTP ошибка: ${response.status}`;
+          try {
+            const errorData = await response.clone().json();
+            if (errorData && typeof errorData === "object") {
+              const err = errorData.error !== undefined ? errorData.error : errorData;
+              code = err.code !== undefined ? err.code : null;
+              details = err.details !== undefined ? err.details : null;
+              if (typeof err.message === "string") message = err.message;
+            }
+          } catch { /* игнорируем */ }
+          throw new ApiError(message, { kind: "http", status: response.status, code, details, url });
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new ApiError("Неверный формат ответа: ожидается application/json", { kind: "invalid-response", url });
+        }
+
+        return await response.json();
+      } catch (error) {
+        if (error.name === "AbortError") {
+          const kind = externalSignal?.aborted ? "aborted" : "timeout";
+          throw new ApiError(kind === "timeout" ? "Превышено время ожидания" : "Запрос отменён", { kind, url, cause: error });
+        }
+        if (error instanceof TypeError) {
+          throw new ApiError("Сетевая ошибка", { kind: "network", url, cause: error });
+        }
+        if (error instanceof ApiError) throw error;
+        throw new ApiError("Неизвестная ошибка при выполнении запроса", { kind: "invalid-response", url, cause: error });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+  };
 }

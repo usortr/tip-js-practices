@@ -62,9 +62,14 @@ export function createDomView(root = document) {
 
   return {
     connect(handlers) {
+      nodes.taskForm.action = "javascript:void(0)";
+      nodes.taskForm.method = "get";
+
       nodes.taskForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        handlers.submit(readDraft());
+        // Отделяем fetch от нативного сабмита формы: в iframe Firefox/Edge
+        // синхронный requestSubmit() отменяет активный POST (NS_BINDING_ABORTED).
+        setTimeout(() => handlers.submit(readDraft()), 0);
       });
       nodes.filtersForm.addEventListener("submit", (event) => {
         event.preventDefault();

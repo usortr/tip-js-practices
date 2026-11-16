@@ -112,7 +112,6 @@ export function createTaskApi(client) {
       
       const tasks = validateTasksArray(rawTasks);
       
-      // Сопоставляем meta.total с реальной длиной коллекции
       if (response.meta.total !== tasks.length) {
         throw invalidResponse("meta.total не совпадает с длиной коллекции задач");
       }
